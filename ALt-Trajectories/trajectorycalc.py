@@ -20,38 +20,65 @@ dt = 0.001
 
 
 def calc_distances() -> list[tuple[float, float, float]]:
+    servo_values = [0.15, 0.3, 0.45, 0.6, 0.75, 0.9]
+    angle_values = [74.1, 68.7, 63.5, 57.5, 52, 45.8]
+    vi_values = [7.1,7.2,7.4,7.5,7.8,7.9]
+    angle_max_ten = max(angle_values) * 10
+    angle_min_ten = min(angle_values) * 10
+
+    i = 0
+    set_values = []
+    for angle_ten in range(-angle_max_ten, -angle_min_ten - 1, 1):
+        angle = angle_ten
+        if angle == angle_values[i]:
+            servo_set = servo[i]
+            vi_set = vi_value[i]
+            angle_set = angle[i]
+        else:
+            if angle > angle_values[i]:
+                i+=1
+            m_angle = (servo_values[i]-servo_value[i-1])/(angle_values[i]-angle_values[i-1])
+            servo_set = m_angle * (angle - angle_values[i-1]) + angle_values[i-1]
+
+            m_vi = (vi_values[i]-vi_value[i-1]) / (servo_values[i]-servo_value[i-1])
+            vi_set = m_vi * (servo_set - servo_Values[i-1]) + servo_value[i-1]
+            angle_set = angle
+        set_values.append((angle_set,vi_Set,servo_set))
+            
+    
     result = []
-    for ten_vi in range(60, 120, 1):
-        vi = ten_vi / 10.0
-        for ten_theta in range(300, 900, 1):
-            theta_i = math.radians(ten_theta / 10.0)
-            theta = theta_i
-            target_z = zf - zi
-            z = 0
-            x = 0
-            t = 0
-            v = vi
-            v_x = math.cos(theta) * vi
-            v_z = math.sin(theta) * vi
+    for each in set_values:
+        vi =  each[1]
+        angle = [0]
+        servo = [2]
+        theta_i = math.radians(angle)
+        theta = theta_i
+        target_z = zf - zi
+        z = 0
+        x = 0
+        t = 0
+        v = vi
+        v_x = math.cos(theta) * vi
+        v_z = math.sin(theta) * vi
 
-            # While the velocity is moving up and we're still above target_z
-            while v_z > 0 or z > target_z:
-                effect_of_drag = (-Cd * rho * x_Area * v**2) / (2 * m)
-                accel_x = effect_of_drag * math.cos(theta)
-                accel_z = effect_of_drag * math.sin(theta) + g
+        # While the velocity is moving up and we're still above target_z
+        while v_z > 0 or z > target_z:
+            effect_of_drag = (-Cd * rho * x_Area * v**2) / (2 * m)
+            accel_x = effect_of_drag * math.cos(theta)
+            accel_z = effect_of_drag * math.sin(theta) + g
 
-                v_x += accel_x * dt
-                v_z += accel_z * dt
+            v_x += accel_x * dt
+            v_z += accel_z * dt
 
-                x += v_x * dt
-                z += v_z * dt
-                t += dt
+            x += v_x * dt
+            z += v_z * dt
+            t += dt
 
-                v = math.sqrt(v_x**2 + v_z**2)
-                theta = math.atan(v_z / v_x)
+            v = math.sqrt(v_x**2 + v_z**2)
+            theta = math.atan(v_z / v_x)
 
-            if math.isclose(z, target_z, rel_tol=0.05):
-                result.append((x, math.degrees(theta_i), vi))
+        if math.isclose(z, target_z, rel_tol=0.05):
+            result.append((x, math.degrees(theta_i), vi,servo))
 
     result = sorted(result, key=lambda x: (x[2], x[0]))
     return result
@@ -62,13 +89,14 @@ def create_distance_map():
 
     grouped = {}
     for val in distance_values:
-        [d, theta, vi] = val
+        [d, theta, vi, servo] = val
         rounded_distance = round(d, 2)
         if (rounded_distance, vi) not in grouped:
             result = {}
-            result["distance"] = rounded_distance
+            result["distance"] = round(rounded_distance,2)
             result["theta"] = round(theta, 1)
-            result["velocity"] = vi
+            result["velocity"] = round(vi,2)
+            result["servo"] = round(servo,3)
             grouped[(rounded_distance, vi)] = result
 
     results = [val for val in grouped.values()]
